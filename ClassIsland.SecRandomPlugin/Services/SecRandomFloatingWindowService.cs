@@ -43,6 +43,8 @@ public class SecRandomFloatingWindowService
             _window = new SecRandomFloatingWindow(_service);
             _window.Closed += (_, _) => _window = null;
             _window.Show();
+            _logger.LogInformation("随机点名悬浮窗已显示：位置 {X},{Y}，尺寸 {Width}x{Height}",
+                _window.Position.X, _window.Position.Y, _window.Width, _window.Height);
             InitializeTrayMenu();
         }
         catch (Exception exception)

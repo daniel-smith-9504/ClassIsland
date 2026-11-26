@@ -12,6 +12,7 @@ public partial class SecRandomFloatingWindow : Window
 
     private readonly SecRandomService _service;
     private bool _dragging;
+    private bool _positionApplied;
     private PixelPoint _dragStartPointer;
     private PixelPoint _dragStartWindow;
 
@@ -55,12 +56,21 @@ public partial class SecRandomFloatingWindow : Window
     {
         var x = _service.Config.FloatingWindowX;
         var y = _service.Config.FloatingWindowY;
-        if (x != int.MinValue && y != int.MinValue && IsOnAnyScreen(new PixelPoint(x, y)))
+
+        // 旧版本可能把未初始化坐标写成 0,0，这里把它当作未设置，避免窗口卡在左上角。
+        if (x != int.MinValue && y != int.MinValue && (x != 0 || y != 0))
         {
-            Position = new PixelPoint(x, y);
+            Position = ClampToWorkingArea(new PixelPoint(x, y));
+            _positionApplied = true;
             return;
         }
 
+        PlaceAtDefaultPosition();
+        _positionApplied = true;
+    }
+
+    private void PlaceAtDefaultPosition()
+    {
         var screen = Screens.Primary ?? Screens.All.FirstOrDefault();
         if (screen == null)
         {
@@ -68,20 +78,42 @@ public partial class SecRandomFloatingWindow : Window
         }
 
         var area = screen.WorkingArea;
-        var width = (int)Math.Ceiling(Bounds.Width == 0 ? Width : Bounds.Width);
-        var height = (int)Math.Ceiling(Bounds.Height == 0 ? 180 : Bounds.Height);
         Position = new PixelPoint(
-            Math.Max(area.X, area.Right - width - DefaultMargin),
-            Math.Max(area.Y, area.Bottom - height - DefaultMargin));
+            Math.Max(area.X, area.Right - WindowWidth - DefaultMargin),
+            Math.Max(area.Y, area.Bottom - WindowHeight - DefaultMargin));
     }
 
-    private bool IsOnAnyScreen(PixelPoint point) =>
-        Screens.All.Any(screen =>
-            point.X >= screen.Bounds.X && point.X < screen.Bounds.Right &&
-            point.Y >= screen.Bounds.Y && point.Y < screen.Bounds.Bottom);
+    private PixelPoint ClampToWorkingArea(PixelPoint target)
+    {
+        var screen = Screens.All.FirstOrDefault(candidate => Contains(candidate.Bounds, target))
+                     ?? Screens.Primary
+                     ?? Screens.All.FirstOrDefault();
+        if (screen == null)
+        {
+            return target;
+        }
+
+        var area = screen.WorkingArea;
+        return new PixelPoint(
+            Math.Clamp(target.X, area.X, Math.Max(area.X, area.Right - WindowWidth)),
+            Math.Clamp(target.Y, area.Y, Math.Max(area.Y, area.Bottom - WindowHeight)));
+    }
+
+    private int WindowWidth => (int)Math.Ceiling(Width is { } width && !double.IsNaN(width) ? width : 360);
+
+    private int WindowHeight => (int)Math.Ceiling(Height is { } height && !double.IsNaN(height) ? height : 176);
+
+    private static bool Contains(PixelRect rect, PixelPoint point) =>
+        point.X >= rect.X && point.X < rect.Right &&
+        point.Y >= rect.Y && point.Y < rect.Bottom;
 
     private void SavePosition()
     {
+        if (!_positionApplied)
+        {
+            return;
+        }
+
         _service.Config.FloatingWindowX = Position.X;
         _service.Config.FloatingWindowY = Position.Y;
     }

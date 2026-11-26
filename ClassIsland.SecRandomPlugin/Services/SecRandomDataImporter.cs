@@ -46,13 +46,6 @@ public sealed class SecRandomSourceInfo
 /// </summary>
 public sealed class SecRandomDataImporter
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        AllowTrailingCommas = true,
-        ReadCommentHandling = JsonCommentHandling.Skip
-    };
-
     private readonly ILogger<SecRandomDataImporter> _logger;
 
     public SecRandomDataImporter(ILogger<SecRandomDataImporter> logger)
@@ -486,25 +479,25 @@ public sealed class SecRandomDataImporter
         {
             if (file.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
             {
-                var document = JsonSerializer.Deserialize<LegacyStudentList>(File.ReadAllText(file), JsonOptions);
-                if (document?.Students == null)
-                {
-                    return null;
-                }
-
+                var entries = SecRandomLegacyJson.ReadRoster(File.ReadAllText(file));
                 var jsonRoster = new LegacyRoster { Name = fallbackName };
-                foreach (var item in document.Students)
+                foreach (var entry in entries)
                 {
                     jsonRoster.Students.Add(new Student
                     {
-                        RecordId = item.RecordId,
-                        IsEnabled = item.Exists,
-                        Id = item.Id ?? "",
-                        Name = item.Name ?? "",
-                        Gender = item.Gender ?? "",
-                        Group = item.Group ?? "",
-                        Tag = NormalizeTags(item.Tags)
+                        RecordId = entry.RecordId == Guid.Empty ? Guid.NewGuid() : entry.RecordId,
+                        IsEnabled = entry.Exists,
+                        Id = entry.Id,
+                        Name = entry.Name,
+                        Gender = entry.Gender,
+                        Group = entry.Group,
+                        Tag = NormalizeTags(entry.Tags)
                     });
+                }
+
+                if (jsonRoster.Students.Count == 0)
+                {
+                    warnings.Add($"旧版名单 {Path.GetFileName(file)} 中没有解析到学生，可能是不兼容的旧格式。");
                 }
 
                 return jsonRoster;
@@ -558,13 +551,8 @@ public sealed class SecRandomDataImporter
         {
             if (file.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
             {
-                var document = JsonSerializer.Deserialize<LegacyStudentHistory>(File.ReadAllText(file), JsonOptions);
-                if (document?.Students == null)
-                {
-                    return null;
-                }
-
-                var count = document.Students.Values.Sum(history => history.Histories?.Count ?? 0);
+                var data = SecRandomLegacyJson.ReadHistory(File.ReadAllText(file));
+                var count = data.Members.Values.Sum(member => member.Histories.Count);
                 return (Path.GetFileNameWithoutExtension(file), count);
             }
 
@@ -706,20 +694,75 @@ public sealed class SecRandomDataImporter
 
         try
         {
-            var document = JsonSerializer.Deserialize<LegacyStudentHistory>(File.ReadAllText(file), JsonOptions);
-            if (document?.Students == null)
+            var data = SecRandomLegacyJson.ReadHistory(File.ReadAllText(file));
+            totalRounds = data.TotalRounds;
+            totalStats = data.TotalStats;
+
+            var byRecordId = students
+                .Where(student => student.RecordId != Guid.Empty)
+                .GroupBy(student => student.RecordId)
+                .ToDictionary(group => group.Key, group => group.First());
+            var byName = new Dictionary<string, Student>(StringComparer.Ordinal);
+            var byStudentId = new Dictionary<string, Student>(StringComparer.Ordinal);
+            foreach (var student in students)
             {
-                return;
+                if (!string.IsNullOrWhiteSpace(student.Name))
+                {
+                    byName.TryAdd(student.Name.Trim(), student);
+                }
+
+                if (!string.IsNullOrWhiteSpace(student.Id))
+                {
+                    byStudentId.TryAdd(student.Id.Trim(), student);
+                }
             }
 
-            totalRounds = document.TotalRounds;
-            totalStats = document.TotalStats;
-            var names = BuildStudentNames(students);
-            foreach (var (memberKey, history) in document.Students)
+            Student? ResolveStudent(string memberKey, LegacyMemberHistory member)
             {
-                var key = NormalizeKey(memberKey);
-                totalCounts[key] = history.TotalCount;
-                foreach (var item in history.Histories ?? [])
+                if (Guid.TryParse(memberKey, out var guid) && byRecordId.TryGetValue(guid, out var byId))
+                {
+                    return byId;
+                }
+
+                if (byName.TryGetValue(memberKey.Trim(), out var byMemberName))
+                {
+                    return byMemberName;
+                }
+
+                if (byStudentId.TryGetValue(memberKey.Trim(), out var byNumber))
+                {
+                    return byNumber;
+                }
+
+                foreach (var entry in member.Histories)
+                {
+                    if (entry.RecordId != Guid.Empty && byRecordId.TryGetValue(entry.RecordId, out var byEntryId))
+                    {
+                        return byEntryId;
+                    }
+
+                    if (entry.Name.Length > 0 && byName.TryGetValue(entry.Name.Trim(), out var byEntryName))
+                    {
+                        return byEntryName;
+                    }
+
+                    if (entry.Number.Length > 0 && byStudentId.TryGetValue(entry.Number.Trim(), out var byEntryNumber))
+                    {
+                        return byEntryNumber;
+                    }
+                }
+
+                return null;
+            }
+
+            foreach (var (memberKey, member) in data.Members)
+            {
+                var student = ResolveStudent(memberKey, member);
+                var recordId = student?.RecordId ?? Guid.Empty;
+                var key = recordId != Guid.Empty ? KeyOf(recordId) : NormalizeKey(memberKey);
+                totalCounts[key] = Math.Max(member.TotalCount, member.Histories.Count);
+
+                foreach (var entry in member.Histories)
                 {
                     recordCounts[key] = recordCounts.GetValueOrDefault(key) + 1;
                     if (!includeHistory)
@@ -727,20 +770,23 @@ public sealed class SecRandomDataImporter
                         continue;
                     }
 
-                    var recordName = item.RecordName;
-                    if (string.IsNullOrWhiteSpace(recordName))
+                    var entryRecordId = entry.RecordId != Guid.Empty
+                        ? entry.RecordId
+                        : recordId;
+                    var recordName = entry.Name;
+                    if (string.IsNullOrWhiteSpace(recordName) && student != null)
                     {
-                        recordName = names.GetValueOrDefault(key) ?? "";
+                        recordName = student.Name;
                     }
 
                     records.Add(new DrawRecord
                     {
-                        RecordId = ParseGuid(memberKey),
-                        StudentId = item.RecordNumber ?? "",
-                        Name = recordName ?? "",
-                        Group = item.RecordGroup ?? "",
-                        Time = item.DrawTime,
-                        BatchId = item.DrawRoundId ?? ""
+                        RecordId = entryRecordId,
+                        StudentId = entry.Number.Length > 0 ? entry.Number : student?.Id ?? "",
+                        Name = recordName,
+                        Group = entry.Group.Length > 0 ? entry.Group : student?.Group ?? "",
+                        Time = entry.Time == default ? member.LastDrawnTime : entry.Time,
+                        BatchId = entry.RoundId
                     });
                 }
             }
@@ -839,55 +885,6 @@ public sealed class SecRandomDataImporter
 
     private static string NormalizeTags(string? tags) =>
         string.Join(' ', SecRandomTagHelper.Split(tags));
-
-    #endregion
-
-    #region 旧版 JSON 模型
-
-    private sealed class LegacyStudentList
-    {
-        public List<LegacyStudent>? Students { get; set; }
-    }
-
-    private sealed class LegacyStudent
-    {
-        public bool Exists { get; set; } = true;
-        public string? Gender { get; set; }
-        public string? Group { get; set; }
-        public string? Id { get; set; }
-        public string? Name { get; set; }
-        public Guid RecordId { get; set; }
-        public string? Tags { get; set; }
-    }
-
-    private sealed class LegacyStudentHistory
-    {
-        public int TotalRounds { get; set; }
-        public int TotalStats { get; set; }
-        public Dictionary<string, LegacyHistory>? Students { get; set; }
-    }
-
-    private sealed class LegacyHistory
-    {
-        public List<LegacyHistoryItem>? Histories { get; set; }
-        public DateTime LastDrawnTime { get; set; }
-        public int RoundsMissed { get; set; }
-        public int TotalCount { get; set; }
-    }
-
-    private sealed class LegacyHistoryItem
-    {
-        public string? RecordId { get; set; }
-        public string? RecordNumber { get; set; }
-        public string? RecordName { get; set; }
-        public string? RecordGender { get; set; }
-        public string? RecordGroup { get; set; }
-        public string? DrawGender { get; set; }
-        public string? DrawGroup { get; set; }
-        public string? HistoryGroup { get; set; }
-        public DateTime DrawTime { get; set; }
-        public string? DrawRoundId { get; set; }
-    }
 
     #endregion
 }

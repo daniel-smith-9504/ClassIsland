@@ -1,0 +1,24 @@
+<ci:ActionSettingsControlBase x:Class="ClassIsland.SecRandomPlugin.Automation.Actions.SecRandomDrawActionSettingsControl"
+                              x:TypeArguments="models:SecRandomDrawActionSettings"
+                              xmlns="https://github.com/avaloniaui"
+                              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                              xmlns:ci="http://classisland.tech/schemas/xaml/core"
+                              xmlns:fa="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
+                              xmlns:models="clr-namespace:ClassIsland.SecRandomPlugin.Models"
+                              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                              mc:Ignorable="d"
+                              d:DesignHeight="200" d:DesignWidth="600">
+    <StackPanel Spacing="8">
+        <fa:SettingsExpander Header="抽取人数" Description="为 0 时使用插件设置中的人数。">
+            <fa:SettingsExpander.Footer>
+                <NumericUpDown Width="140" Minimum="0" Maximum="50" Value="{Binding Settings.DrawCount, Mode=TwoWay}"/>
+            </fa:SettingsExpander.Footer>
+        </fa:SettingsExpander>
+        <fa:SettingsExpander Header="显示提醒" Description="抽取完成后在 ClassIsland 中提醒抽取结果。">
+            <fa:SettingsExpander.Footer>
+                <ToggleSwitch IsChecked="{Binding Settings.ShowNotification, Mode=TwoWay}"/>
+            </fa:SettingsExpander.Footer>
+        </fa:SettingsExpander>
+    </StackPanel>
+</ci:ActionSettingsControlBase>

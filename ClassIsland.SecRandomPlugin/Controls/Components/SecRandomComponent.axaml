@@ -1,0 +1,31 @@
+<controls:ComponentBase x:TypeArguments="models:SecRandomComponentSettings"
+                        x:Class="ClassIsland.SecRandomPlugin.Controls.Components.SecRandomComponent"
+                        xmlns="https://github.com/avaloniaui"
+                        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                        xmlns:controls="clr-namespace:ClassIsland.Core.Abstractions.Controls;assembly=ClassIsland.Core"
+                        xmlns:local="clr-namespace:ClassIsland.SecRandomPlugin.Controls.Components"
+                        xmlns:models="clr-namespace:ClassIsland.SecRandomPlugin.Models"
+                        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                        mc:Ignorable="d"
+                        d:DesignHeight="80" d:DesignWidth="400">
+    <Grid VerticalAlignment="Center"
+          DataContext="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=local:SecRandomComponent}}">
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <TextBlock x:Name="HeaderText"
+                       Text="{Binding Settings.Header}"
+                       IsVisible="{Binding Settings.ShowHeader}"
+                       FontSize="16"
+                       VerticalAlignment="Center"/>
+            <TextBlock x:Name="ResultText"
+                       FontSize="16"
+                       FontWeight="Bold"
+                       VerticalAlignment="Center"/>
+            <Button Content="抽取"
+                    Click="DrawButton_OnClick"
+                    Padding="8,2"
+                    FontSize="12"
+                    VerticalAlignment="Center"/>
+        </StackPanel>
+    </Grid>
+</controls:ComponentBase>

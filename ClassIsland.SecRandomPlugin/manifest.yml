@@ -1,0 +1,8 @@
+id: classisland.secrandom
+name: SecRandom 随机点名
+description: 参考 SecRandom 实现的随机点名插件，支持名单管理、公平抽取、重复控制与抽取历史。
+entranceAssembly: "ClassIsland.SecRandomPlugin.dll"
+url: https://github.com/daniel-smith-9504/ClassIsland
+apiVersion: 2.0.0.0
+version: 1.0.0.0
+author: daniel-smith-9504

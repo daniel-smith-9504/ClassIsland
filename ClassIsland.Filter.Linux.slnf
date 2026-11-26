@@ -8,6 +8,7 @@
       "ClassIsland.DocsGenerator\\ClassIsland.DocsGenerator.csproj",
       "ClassIsland.ExamplePlugin\\ClassIsland.ExamplePlugin.csproj",
       "ClassIsland.Launcher\\ClassIsland.Launcher.csproj",
+      "ClassIsland.SecRandomPlugin\\ClassIsland.SecRandomPlugin.csproj",
       "ClassIsland.Platforms.Abstractions\\ClassIsland.Platforms.Abstractions.csproj",
       "ClassIsland.PluginSdk\\ClassIsland.PluginSdk.csproj",
       "ClassIsland.Shared.IPC\\ClassIsland.Shared.IPC.csproj",

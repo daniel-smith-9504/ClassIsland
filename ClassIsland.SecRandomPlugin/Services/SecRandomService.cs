@@ -153,7 +153,7 @@ public class SecRandomService
 
     /// <summary>
     /// 从多行文本导入学生。
-    /// 每行格式：姓名，或 学号,姓名，或 学号,姓名,分组。
+    /// 每行格式：姓名，或 学号,姓名，或 学号,姓名,分组，或 学号,姓名,分组,标签。
     /// </summary>
     public int ImportStudents(string text)
     {
@@ -167,7 +167,7 @@ public class SecRandomService
             }
 
             var parts = line.Split([',', '，', '\t'], StringSplitOptions.TrimEntries);
-            string id = "", name = "", group = "";
+            string id = "", name = "", group = "", tag = "";
             switch (parts.Length)
             {
                 case 1:
@@ -177,10 +177,16 @@ public class SecRandomService
                     id = parts[0];
                     name = parts[1];
                     break;
+                case 3:
+                    id = parts[0];
+                    name = parts[1];
+                    group = parts[2];
+                    break;
                 default:
                     id = parts[0];
                     name = parts[1];
                     group = parts[2];
+                    tag = parts[3];
                     break;
             }
 
@@ -189,7 +195,7 @@ public class SecRandomService
                 continue;
             }
 
-            imported.Add(new Student { Id = id, Name = name, Group = group });
+            imported.Add(new Student { Id = id, Name = name, Group = group, Tag = tag });
         }
 
         if (imported.Count == 0)
@@ -225,10 +231,32 @@ public class SecRandomService
     {
         DrawStatus.Success => $"抽取结果：{string.Join("、", outcome.Selected.Select(student => student.Name))}",
         DrawStatus.NoCandidates => "名单为空，请先添加或导入学生。",
+        DrawStatus.NoCandidatesInScope => "当前抽取范围内没有可抽取的学生，请检查抽取范围或名单。",
         DrawStatus.RepeatLimitExhausted => "可用学生不足（可能已达重复上限），请调整重复控制或重置历史。",
         DrawStatus.NoEligibleCandidates => "没有可抽取的学生（可能都在冷却中）。",
         _ => "抽取失败。"
     };
+
+    /// <summary>
+    /// 获取当前名单中某个抽取范围下的可选项（分组、性别或标签）。
+    /// </summary>
+    public IReadOnlyList<string> GetScopeValues(int scopeType)
+    {
+        IEnumerable<string> values = scopeType switch
+        {
+            SecRandomConstants.ScopeTypeGroup => Students.Select(student => student.Group),
+            SecRandomConstants.ScopeTypeGender => Students.Select(student => student.Gender),
+            SecRandomConstants.ScopeTypeTag => Students.Select(student => student.Tag),
+            _ => []
+        };
+
+        return values
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
+            .Distinct()
+            .OrderBy(value => value)
+            .ToList();
+    }
 
     private void SaveConfig() => Save(ConfigFileName, Config);
 

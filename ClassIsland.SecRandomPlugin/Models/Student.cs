@@ -13,6 +13,11 @@ public partial class Student : ObservableObject
     [ObservableProperty] private string _id = "";
     [ObservableProperty] private string _group = "";
     [ObservableProperty] private string _gender = "";
+    [ObservableProperty] private string _tag = "";
+    /// <summary>
+    /// 该学生单独的冷却时长（分钟）。为 0 时跟随插件设置中的全局冷却。
+    /// </summary>
+    [ObservableProperty] private int _cooldownMinutes;
     [ObservableProperty] private bool _isEnabled = true;
 
     [JsonIgnore]

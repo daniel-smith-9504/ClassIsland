@@ -7,6 +7,7 @@ public enum DrawStatus
 {
     Success,
     NoCandidates,
+    NoCandidatesInScope,
     RepeatLimitExhausted,
     NoEligibleCandidates
 }
@@ -40,10 +41,15 @@ public static class DrawEngine
         DateTime now)
     {
         var count = Math.Max(1, requestedCount);
-        var candidates = students.Where(IsCandidate).ToList();
+        var candidates = students.Where(IsCandidate).Where(student => MatchesScope(student, config)).ToList();
         if (candidates.Count == 0)
         {
-            return new DrawOutcome { Status = DrawStatus.NoCandidates };
+            var scopeLimited = config.ScopeType != SecRandomConstants.ScopeTypeAll &&
+                               !string.IsNullOrWhiteSpace(config.ScopeValue);
+            return new DrawOutcome
+            {
+                Status = scopeLimited ? DrawStatus.NoCandidatesInScope : DrawStatus.NoCandidates
+            };
         }
 
         var threshold = ResolveRepeatThreshold(config);
@@ -72,6 +78,26 @@ public static class DrawEngine
     public static bool IsCandidate(Student student) =>
         student.IsEnabled &&
         (!string.IsNullOrWhiteSpace(student.Name) || !string.IsNullOrWhiteSpace(student.Id));
+
+    /// <summary>
+    /// 判断学生是否落在当前抽取范围内。范围为空时视为全部学生。
+    /// </summary>
+    public static bool MatchesScope(Student student, SecRandomConfig config)
+    {
+        if (config.ScopeType == SecRandomConstants.ScopeTypeAll || string.IsNullOrWhiteSpace(config.ScopeValue))
+        {
+            return true;
+        }
+
+        var value = config.ScopeValue.Trim();
+        return config.ScopeType switch
+        {
+            SecRandomConstants.ScopeTypeGroup => student.Group.Trim() == value,
+            SecRandomConstants.ScopeTypeGender => student.Gender.Trim() == value,
+            SecRandomConstants.ScopeTypeTag => student.Tag.Trim() == value,
+            _ => true
+        };
+    }
 
     /// <summary>
     /// 将重复控制转换为历史次数阈值：0 表示不限制，1 表示本轮内不重复，其它值为「半重复」上限。
@@ -112,12 +138,12 @@ public static class DrawEngine
             ceiling = Math.Max(ceiling, sorted[Math.Clamp(count, 1, sorted.Length) - 1] + 1);
         }
 
-        var shieldDuration = ResolveShieldDuration(config);
         return candidates.Select((student, index) =>
         {
-            if (shieldDuration is { } duration &&
+            var duration = ResolveShieldDuration(student, config);
+            if (duration is { } effectiveDuration &&
                 lastDrawTimes.TryGetValue(student.RecordId, out var lastTime) &&
-                now - lastTime < duration)
+                now - lastTime < effectiveDuration)
             {
                 return 0.0;
             }
@@ -126,10 +152,20 @@ public static class DrawEngine
         }).ToList();
     }
 
-    private static TimeSpan? ResolveShieldDuration(SecRandomConfig config) =>
-        config.ShieldEnabled && config.ShieldMinutes > 0
+    /// <summary>
+    /// 优先使用学生单独的冷却时长；未设置时回退到全局冷却。
+    /// </summary>
+    private static TimeSpan? ResolveShieldDuration(Student student, SecRandomConfig config)
+    {
+        if (student.CooldownMinutes > 0)
+        {
+            return TimeSpan.FromMinutes(student.CooldownMinutes);
+        }
+
+        return config.ShieldEnabled && config.ShieldMinutes > 0
             ? TimeSpan.FromMinutes(config.ShieldMinutes)
             : null;
+    }
 
     private static List<Student> WeightedSample(List<Student> candidates, List<double> weights, int count)
     {

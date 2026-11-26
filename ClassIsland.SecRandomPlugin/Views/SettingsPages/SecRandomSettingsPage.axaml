@@ -6,7 +6,7 @@
                      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                      mc:Ignorable="d"
-                     d:DesignHeight="700" d:DesignWidth="900">
+                     d:DesignHeight="760" d:DesignWidth="980">
     <ScrollViewer>
         <StackPanel Spacing="8" Margin="0 0 16 16">
             <TextBlock Text="抽取设置" FontSize="20" FontWeight="SemiBold" Margin="0 8 0 0"/>
@@ -28,6 +28,25 @@
                 </fa:SettingsExpander.Footer>
             </fa:SettingsExpander>
 
+            <fa:SettingsExpander Header="抽取范围"
+                                 Description="限定从全部学生、某个分组、性别或标签中抽取。标签可在下方名单中按学生设置。">
+                <fa:SettingsExpander.Footer>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ComboBox x:Name="ScopeTypeCombo" Width="130"
+                                  SelectionChanged="ScopeType_OnSelectionChanged">
+                            <ComboBoxItem Content="全部学生"/>
+                            <ComboBoxItem Content="按分组"/>
+                            <ComboBoxItem Content="按性别"/>
+                            <ComboBoxItem Content="按标签"/>
+                        </ComboBox>
+                        <ComboBox x:Name="ScopeValueCombo" Width="130"
+                                  IsVisible="False"
+                                  ItemsSource="{Binding ScopeValues}"
+                                  SelectionChanged="ScopeValue_OnSelectionChanged"/>
+                    </StackPanel>
+                </fa:SettingsExpander.Footer>
+            </fa:SettingsExpander>
+
             <fa:SettingsExpander Header="重复控制"
                                  Description="允许重复：不做限制；不重复：历史中被抽中过的学生不再参与；半重复：达到上限后不再参与。">
                 <fa:SettingsExpander.Footer>
@@ -45,7 +64,8 @@
                 </fa:SettingsExpander.Footer>
             </fa:SettingsExpander>
 
-            <fa:SettingsExpander Header="抽取冷却" Description="开启后，刚被抽中的学生在指定时间内不会再次被抽中。">
+            <fa:SettingsExpander Header="全局冷却"
+                                 Description="开启后，刚被抽中的学生在指定时间内不会再次被抽中。单个学生可在名单中设置自己的冷却时长。">
                 <fa:SettingsExpander.Footer>
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <NumericUpDown Width="140" Minimum="1" Maximum="1440"
@@ -61,17 +81,18 @@
                     BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1" CornerRadius="8" Padding="16">
                 <StackPanel Spacing="10">
-                    <Grid ColumnDefinitions="2*,2*,1.5*,Auto" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="1.4*,1.1*,0.9*,0.9*,Auto" ColumnSpacing="8">
                         <TextBox x:Name="NewNameBox" Watermark="姓名"/>
                         <TextBox x:Name="NewIdBox" Grid.Column="1" Watermark="学号（可选）"/>
                         <TextBox x:Name="NewGroupBox" Grid.Column="2" Watermark="分组（可选）"/>
-                        <Button Grid.Column="3" Content="添加" Click="AddStudent_OnClick"/>
+                        <TextBox x:Name="NewTagBox" Grid.Column="3" Watermark="标签（可选）"/>
+                        <Button Grid.Column="4" Content="添加" Click="AddStudent_OnClick"/>
                     </Grid>
 
-                    <ListBox x:Name="StudentList" ItemsSource="{Binding Service.Students}" MaxHeight="360">
+                    <ListBox x:Name="StudentList" ItemsSource="{Binding Service.Students}" MaxHeight="380">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid ColumnDefinitions="Auto,2*,2*,2*,Auto" ColumnSpacing="8">
+                                <Grid ColumnDefinitions="Auto,1.3*,1.1*,0.8*,0.7*,0.9*,Auto,Auto" ColumnSpacing="6">
                                     <CheckBox IsChecked="{Binding IsEnabled}" ToolTip.Tip="是否参与抽取"/>
                                     <TextBox Grid.Column="1" Watermark="姓名"
                                              Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
@@ -79,7 +100,14 @@
                                              Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}"/>
                                     <TextBox Grid.Column="3" Watermark="分组"
                                              Text="{Binding Group, UpdateSourceTrigger=PropertyChanged}"/>
-                                    <Button Grid.Column="4" Content="删除" Click="RemoveStudent_OnClick"/>
+                                    <TextBox Grid.Column="4" Watermark="性别"
+                                             Text="{Binding Gender, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBox Grid.Column="5" Watermark="标签"
+                                             Text="{Binding Tag, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <NumericUpDown Grid.Column="6" Width="96" Minimum="0" Maximum="1440"
+                                                   Value="{Binding CooldownMinutes, Mode=TwoWay}"
+                                                   ToolTip.Tip="单独冷却分钟数，0 表示跟随全局冷却"/>
+                                    <Button Grid.Column="7" Content="删除" Click="RemoveStudent_OnClick"/>
                                 </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -90,11 +118,11 @@
 
                     <Expander Header="批量导入">
                         <StackPanel Spacing="8" Margin="0 8 0 0">
-                            <TextBlock Text="每行一个学生：姓名，或 学号,姓名，或 学号,姓名,分组。"
+                            <TextBlock Text="每行一个学生：姓名，或 学号,姓名，或 学号,姓名,分组，或 学号,姓名,分组,标签。"
                                        TextWrapping="Wrap"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                             <TextBox x:Name="ImportBox" AcceptsReturn="True" Height="120" TextWrapping="Wrap"
-                                     Watermark="1,张三,第一组"/>
+                                     Watermark="1,张三,第一组,1号"/>
                             <Button Content="导入" Click="Import_OnClick" HorizontalAlignment="Left"/>
                         </StackPanel>
                     </Expander>
@@ -108,7 +136,7 @@
                     BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1" CornerRadius="8" Padding="16">
                 <StackPanel Spacing="10">
-                    <TextBlock Text="历史记录用于计算公平权重与重复控制，可在需要时重置。"
+                    <TextBlock Text="历史记录用于计算公平权重、重复控制与冷却，可在需要时重置。"
                                TextWrapping="Wrap"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
 
@@ -122,6 +150,7 @@
 
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button Content="立即抽取" Click="Draw_OnClick"/>
+                        <Button Content="打开悬浮窗" Click="OpenFloatingWindow_OnClick"/>
                         <Button Content="清空历史" Click="ClearHistory_OnClick"/>
                     </StackPanel>
 

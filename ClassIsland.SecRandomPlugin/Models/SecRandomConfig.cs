@@ -13,6 +13,8 @@ public partial class SecRandomConfig : ObservableObject
     [ObservableProperty] private int _halfRepeat = 2;
     [ObservableProperty] private bool _shieldEnabled;
     [ObservableProperty] private int _shieldMinutes = 5;
+    [ObservableProperty] private int _scopeType = SecRandomConstants.ScopeTypeAll;
+    [ObservableProperty] private string _scopeValue = "";
 }
 
 /// <summary>
@@ -26,4 +28,9 @@ public static class SecRandomConstants
     public const int RepeatModeRepeat = 0;
     public const int RepeatModeNoRepeat = 1;
     public const int RepeatModeHalfRepeat = 2;
+
+    public const int ScopeTypeAll = 0;
+    public const int ScopeTypeGroup = 1;
+    public const int ScopeTypeGender = 2;
+    public const int ScopeTypeTag = 3;
 }

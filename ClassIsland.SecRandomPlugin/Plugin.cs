@@ -19,10 +19,12 @@ public class Plugin : PluginBase
     {
         services.AddSingleton(new SecRandomPaths(PluginConfigFolder));
         services.AddSingleton<SecRandomService>();
+        services.AddSingleton<SecRandomFloatingWindowService>();
 
         services.AddSettingsPage<SecRandomSettingsPage>();
         services.AddComponent<SecRandomComponent, SecRandomComponentSettingsControl>();
         services.AddAction<SecRandomDrawAction, SecRandomDrawActionSettingsControl>();
+        services.AddAction<SecRandomOpenFloatingWindowAction>();
         services.AddTrigger<SecRandomDrawCompletedTrigger>();
         services.AddNotificationProvider<SecRandomNotificationProvider>();
     }

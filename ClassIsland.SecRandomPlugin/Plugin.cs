@@ -19,6 +19,7 @@ public class Plugin : PluginBase
     {
         services.AddSingleton(new SecRandomPaths(PluginConfigFolder));
         services.AddSingleton<SecRandomService>();
+        services.AddSingleton<SecRandomDataImporter>();
         services.AddSingleton<SecRandomFloatingWindowService>();
 
         services.AddSettingsPage<SecRandomSettingsPage>();

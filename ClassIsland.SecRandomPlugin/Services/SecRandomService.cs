@@ -14,6 +14,14 @@ public sealed class DrawCompletedEventArgs(IReadOnlyList<Student> students, stri
     public string Summary => string.Join("、", Students.Select(student => student.Name));
 }
 
+public sealed class ImportOutcome
+{
+    public int AddedStudents { get; init; }
+    public int UpdatedStudents { get; init; }
+    public int ImportedHistory { get; init; }
+    public int SkippedHistory { get; init; }
+}
+
 /// <summary>
 /// 随机点名的运行时服务：维护名单、设置与抽取历史，并负责持久化和抽取事件。
 /// </summary>
@@ -77,6 +85,11 @@ public class SecRandomService
         {
             var drawCounts = new Dictionary<Guid, int>();
             var lastDrawTimes = new Dictionary<Guid, DateTime>();
+            foreach (var student in Students)
+            {
+                drawCounts[student.RecordId] = Math.Max(0, student.BaseDrawCount);
+            }
+
             foreach (var record in History)
             {
                 drawCounts[record.RecordId] = drawCounts.GetValueOrDefault(record.RecordId) + 1;
@@ -216,9 +229,102 @@ public class SecRandomService
 
     public void ResetHistory()
     {
-        RunOnUiThread(History.Clear);
+        RunOnUiThread(() =>
+        {
+            History.Clear();
+            foreach (var student in Students)
+            {
+                student.BaseDrawCount = 0;
+            }
+        });
+        SaveRoster();
         SaveHistory();
     }
+
+    /// <summary>
+    /// 把从 SecRandom 原项目数据中读取的档案合并进插件。
+    /// </summary>
+    /// <param name="profile">导入的档案数据。</param>
+    /// <param name="replaceExisting">是否先清空现有名单与历史。</param>
+    /// <param name="includeHistory">是否导入历史记录（否则仅保留累计次数基线）。</param>
+    public ImportOutcome Import(SecRandomImportProfile profile, bool replaceExisting, bool includeHistory)
+    {
+        lock (_gate)
+        {
+            var added = 0;
+            var updated = 0;
+            var importedHistory = 0;
+            var skippedHistory = 0;
+
+            RunOnUiThread(() =>
+            {
+                if (replaceExisting)
+                {
+                    Students.Clear();
+                    History.Clear();
+                }
+
+                var existing = Students
+                    .GroupBy(student => student.RecordId)
+                    .ToDictionary(group => group.Key, group => group.First());
+
+                foreach (var source in profile.Students)
+                {
+                    if (existing.TryGetValue(source.RecordId, out var target))
+                    {
+                        target.Name = source.Name;
+                        target.Id = source.Id;
+                        target.Group = source.Group;
+                        target.Gender = source.Gender;
+                        target.Tag = source.Tag;
+                        target.IsEnabled = source.IsEnabled;
+                        target.BaseDrawCount = Math.Max(target.BaseDrawCount, source.BaseDrawCount);
+                        updated++;
+                        continue;
+                    }
+
+                    Students.Add(source);
+                    existing[source.RecordId] = source;
+                    added++;
+                }
+
+                if (includeHistory)
+                {
+                    var keys = new HashSet<string>(StringComparer.Ordinal);
+                    foreach (var record in History)
+                    {
+                        keys.Add(HistoryKey(record));
+                    }
+
+                    foreach (var record in profile.History.OrderBy(record => record.Time))
+                    {
+                        if (!keys.Add(HistoryKey(record)))
+                        {
+                            skippedHistory++;
+                            continue;
+                        }
+
+                        History.Insert(0, record);
+                        importedHistory++;
+                    }
+                }
+            });
+
+            SaveRoster();
+            SaveHistory();
+
+            return new ImportOutcome
+            {
+                AddedStudents = added,
+                UpdatedStudents = updated,
+                ImportedHistory = importedHistory,
+                SkippedHistory = skippedHistory
+            };
+        }
+    }
+
+    private static string HistoryKey(DrawRecord record) =>
+        $"{record.RecordId:N}|{record.Time.Ticks}|{record.BatchId}";
 
     public void SaveAll()
     {
@@ -246,7 +352,7 @@ public class SecRandomService
         {
             SecRandomConstants.ScopeTypeGroup => Students.Select(student => student.Group),
             SecRandomConstants.ScopeTypeGender => Students.Select(student => student.Gender),
-            SecRandomConstants.ScopeTypeTag => Students.Select(student => student.Tag),
+            SecRandomConstants.ScopeTypeTag => Students.SelectMany(student => student.TagValues),
             _ => []
         };
 

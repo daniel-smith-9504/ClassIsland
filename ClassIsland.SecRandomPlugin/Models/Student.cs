@@ -19,8 +19,30 @@ public partial class Student : ObservableObject
     /// </summary>
     [ObservableProperty] private int _cooldownMinutes;
     [ObservableProperty] private bool _isEnabled = true;
+    /// <summary>
+    /// 从 SecRandom 导入时的历史次数基线（累计次数减去已导入的记录数），用于在历史被裁剪时仍然保持公平权重。
+    /// </summary>
+    [ObservableProperty] private int _baseDrawCount;
 
     [JsonIgnore]
     public string DisplayName =>
         string.IsNullOrWhiteSpace(Id) ? Name : $"{Name}（{Id}）";
+
+    /// <summary>
+    /// 学生的标签以空白分隔存储，与 SecRandom 一致；这里按标签逐个拆分以便范围筛选。
+    /// </summary>
+    [JsonIgnore]
+    public IReadOnlyList<string> TagValues => SecRandomTagHelper.Split(Tag);
+}
+
+public static class SecRandomTagHelper
+{
+    private static readonly char[] Separators = [' ', ',', '，', ';', '；', '|', '/', '\\', '\n', '\t'];
+
+    public static IReadOnlyList<string> Split(string? tags) =>
+        string.IsNullOrWhiteSpace(tags)
+            ? []
+            : tags.Split(Separators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Distinct()
+                .ToList();
 }

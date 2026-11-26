@@ -94,7 +94,7 @@ public static class DrawEngine
         {
             SecRandomConstants.ScopeTypeGroup => student.Group.Trim() == value,
             SecRandomConstants.ScopeTypeGender => student.Gender.Trim() == value,
-            SecRandomConstants.ScopeTypeTag => student.Tag.Trim() == value,
+            SecRandomConstants.ScopeTypeTag => student.TagValues.Contains(value, StringComparer.Ordinal),
             _ => true
         };
     }

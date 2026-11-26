@@ -116,6 +116,38 @@
                     <TextBlock x:Name="RosterStatusText" FontSize="12"
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
 
+                    <Expander Header="从 SecRandom 导入" IsExpanded="False">
+                        <StackPanel Spacing="8" Margin="0 8 0 0">
+                            <TextBlock Text="支持原项目的数据目录、roll_call.srl、*.srhdb、旧版 roll_call_list 档案，以及包含 data 目录的备份 zip。只会读取，不会修改原文件。"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                <TextBox x:Name="SecRandomPathBox"
+                                         Watermark="SecRandom 的 data 目录、.srl / .srhdb 文件或备份 .zip"/>
+                                <Button Grid.Column="1" Content="选择文件" Click="PickSecRandomFile_OnClick"/>
+                                <Button Grid.Column="2" Content="选择文件夹" Click="PickSecRandomFolder_OnClick"/>
+                            </Grid>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="扫描档案" Click="ScanSecRandom_OnClick"/>
+                                <ComboBox x:Name="SecRandomProfileCombo" Width="300"
+                                          ItemsSource="{Binding ImportProfiles}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding DisplayText}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <CheckBox x:Name="ImportHistoryCheck" Content="导入抽取历史与次数" IsChecked="True"/>
+                                <CheckBox x:Name="ReplaceRosterCheck" Content="导入前清空现有名单" IsChecked="True"/>
+                            </StackPanel>
+                            <Button Content="开始导入" Click="ImportSecRandom_OnClick" HorizontalAlignment="Left"/>
+                            <TextBlock x:Name="SecRandomImportStatusText" FontSize="12" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                    </Expander>
+
                     <Expander Header="批量导入">
                         <StackPanel Spacing="8" Margin="0 8 0 0">
                             <TextBlock Text="每行一个学生：姓名，或 学号,姓名，或 学号,姓名,分组，或 学号,姓名,分组,标签。"

@@ -4,6 +4,7 @@ using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using ClassIsland.Core.Abstractions.Controls;
 using ClassIsland.Core.Attributes;
 using ClassIsland.SecRandomPlugin.Models;
@@ -15,11 +16,15 @@ namespace ClassIsland.SecRandomPlugin.Views.SettingsPages;
 public partial class SecRandomSettingsPage : SettingsPageBase
 {
     private readonly SecRandomFloatingWindowService _floatingWindows;
+    private readonly SecRandomDataImporter _importer;
+    private SecRandomSourceInfo? _importSource;
 
-    public SecRandomSettingsPage(SecRandomService service, SecRandomFloatingWindowService floatingWindows)
+    public SecRandomSettingsPage(SecRandomService service, SecRandomFloatingWindowService floatingWindows,
+        SecRandomDataImporter importer)
     {
         Service = service;
         _floatingWindows = floatingWindows;
+        _importer = importer;
         InitializeComponent();
         DataContext = this;
     }
@@ -27,6 +32,8 @@ public partial class SecRandomSettingsPage : SettingsPageBase
     public SecRandomService Service { get; }
 
     public ObservableCollection<string> ScopeValues { get; } = [];
+
+    public ObservableCollection<SecRandomProfileSummary> ImportProfiles { get; } = [];
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
@@ -156,6 +163,141 @@ public partial class SecRandomSettingsPage : SettingsPageBase
             ImportBox.Text = "";
         }
     }
+
+    private async void PickSecRandomFile_OnClick(object? sender, RoutedEventArgs e)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null)
+        {
+            return;
+        }
+
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "选择 SecRandom 数据文件",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("SecRandom 数据")
+                {
+                    Patterns = ["*.srl", "*.srhdb", "*.zip", "*.json"]
+                },
+                FilePickerFileTypes.All
+            ]
+        });
+
+        var path = files.Count > 0 ? files[0].TryGetLocalPath() : null;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        SecRandomPathBox.Text = path;
+        ScanSecRandom();
+    }
+
+    private async void PickSecRandomFolder_OnClick(object? sender, RoutedEventArgs e)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null)
+        {
+            return;
+        }
+
+        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "选择 SecRandom 的 data 目录",
+            AllowMultiple = false
+        });
+
+        var path = folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        SecRandomPathBox.Text = path;
+        ScanSecRandom();
+    }
+
+    private void ScanSecRandom_OnClick(object? sender, RoutedEventArgs e) => ScanSecRandom();
+
+    private void ScanSecRandom()
+    {
+        var path = SecRandomPathBox.Text?.Trim() ?? "";
+        if (path.Length == 0)
+        {
+            SetImportStatus("请先选择或填写 SecRandom 数据路径。");
+            return;
+        }
+
+        try
+        {
+            _importSource = _importer.Inspect(path);
+            ImportProfiles.Clear();
+            foreach (var profile in _importSource.Profiles)
+            {
+                ImportProfiles.Add(profile);
+            }
+
+            SecRandomProfileCombo.SelectedIndex = ImportProfiles.Count > 0 ? 0 : -1;
+
+            var parts = new List<string>
+            {
+                ImportProfiles.Count > 0 ? $"找到 {ImportProfiles.Count} 个档案" : "没有找到可导入的名单档案"
+            };
+            if (!_importSource.HasRoster)
+            {
+                parts.Add("未检测到名单库");
+            }
+
+            if (!_importSource.HasHistory)
+            {
+                parts.Add("未检测到历史库");
+            }
+
+            if (_importSource.Warnings.Count > 0)
+            {
+                parts.Add("提示：" + string.Join("；", _importSource.Warnings.Take(3)));
+            }
+
+            SetImportStatus(string.Join("，", parts) + "。");
+        }
+        catch (Exception ex)
+        {
+            _importSource = null;
+            ImportProfiles.Clear();
+            SetImportStatus($"扫描失败：{ex.Message}");
+        }
+    }
+
+    private void ImportSecRandom_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (_importSource == null || SecRandomProfileCombo.SelectedItem is not SecRandomProfileSummary summary)
+        {
+            SetImportStatus("请先扫描并选择一个档案。");
+            return;
+        }
+
+        var includeHistory = ImportHistoryCheck.IsChecked == true;
+        var replaceExisting = ReplaceRosterCheck.IsChecked == true;
+        try
+        {
+            var profile = _importer.Import(_importSource.SourcePath, summary.Name, includeHistory);
+            var outcome = Service.Import(profile, replaceExisting, includeHistory);
+            RefreshScopeValues();
+
+            var historyText = includeHistory ? $"，历史 {outcome.ImportedHistory} 条" : "";
+            SetImportStatus($"已导入档案「{summary.Name}」：新增 {outcome.AddedStudents} 名学生，更新 {outcome.UpdatedStudents} 名{historyText}。");
+            RosterStatusText.Text = $"当前名单共 {Service.Students.Count} 名学生。";
+        }
+        catch (Exception ex)
+        {
+            SetImportStatus($"导入失败：{ex.Message}");
+        }
+    }
+
+    private void SetImportStatus(string text) => SecRandomImportStatusText.Text = text;
 
     private void ClearRoster_OnClick(object? sender, RoutedEventArgs e)
     {

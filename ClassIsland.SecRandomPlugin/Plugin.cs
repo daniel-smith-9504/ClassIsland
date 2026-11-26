@@ -21,6 +21,7 @@ public class Plugin : PluginBase
         services.AddSingleton<SecRandomService>();
         services.AddSingleton<SecRandomDataImporter>();
         services.AddSingleton<SecRandomFloatingWindowService>();
+        services.AddHostedService<SecRandomFloatingWindowHostedService>();
 
         services.AddSettingsPage<SecRandomSettingsPage>();
         services.AddComponent<SecRandomComponent, SecRandomComponentSettingsControl>();

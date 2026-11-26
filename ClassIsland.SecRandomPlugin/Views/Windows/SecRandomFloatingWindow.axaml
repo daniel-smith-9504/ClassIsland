@@ -5,33 +5,55 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         mc:Ignorable="d"
-        Width="360" Height="180"
-        MinWidth="300" MinHeight="150"
+        Width="360"
+        SizeToContent="Height"
         CanResize="False"
+        CanMinimize="False"
+        CanMaximize="False"
         Topmost="True"
+        ShowActivated="False"
         ShowInTaskbar="False"
-        WindowStartupLocation="CenterScreen"
+        SystemDecorations="None"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        WindowStartupLocation="Manual"
         Title="随机点名">
-    <Grid RowDefinitions="Auto,*,Auto" Margin="16" RowSpacing="10">
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="随机点名" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
-            <TextBlock Text="人数" VerticalAlignment="Center"
-                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-            <NumericUpDown Width="110" Minimum="1" Maximum="50"
-                           Value="{Binding Service.Config.DrawCount, Mode=TwoWay}"/>
-        </StackPanel>
+    <Border CornerRadius="12"
+            Opacity="0.94"
+            Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            BoxShadow="0 8 24 0 #55000000"
+            Padding="16,12">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="10">
+            <Border Grid.Row="0" x:Name="DragHandle"
+                    Background="Transparent"
+                    Cursor="SizeAll"
+                    PointerPressed="DragHandle_OnPointerPressed"
+                    PointerMoved="DragHandle_OnPointerMoved"
+                    PointerReleased="DragHandle_OnPointerReleased">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="随机点名" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="拖动移动" FontSize="11" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                </Grid>
+            </Border>
 
-        <TextBlock Grid.Row="1"
-                   x:Name="ResultText"
-                   Text="点击「抽取」开始"
-                   FontSize="22"
-                   FontWeight="Bold"
-                   TextWrapping="Wrap"
-                   VerticalAlignment="Center"/>
+            <TextBlock Grid.Row="1"
+                       x:Name="ResultText"
+                       Text="点击「抽取」开始"
+                       FontSize="22"
+                       FontWeight="Bold"
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Center"/>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-            <Button Content="抽取" Click="Draw_OnClick"/>
-            <Button Content="关闭" Click="Close_OnClick"/>
-        </StackPanel>
-    </Grid>
+            <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8">
+                <TextBlock Text="人数" VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                <NumericUpDown Grid.Column="1" Width="100" Minimum="1" Maximum="50"
+                               Value="{Binding Service.Config.DrawCount, Mode=TwoWay}"/>
+                <Button Grid.Column="3" Content="抽取" Click="Draw_OnClick"/>
+            </Grid>
+        </Grid>
+    </Border>
 </Window>

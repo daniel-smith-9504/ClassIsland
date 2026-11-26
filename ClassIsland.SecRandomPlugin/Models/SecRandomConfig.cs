@@ -15,6 +15,11 @@ public partial class SecRandomConfig : ObservableObject
     [ObservableProperty] private int _shieldMinutes = 5;
     [ObservableProperty] private int _scopeType = SecRandomConstants.ScopeTypeAll;
     [ObservableProperty] private string _scopeValue = "";
+    /// <summary>
+    /// 悬浮窗上次保存的屏幕坐标。使用 <see cref="int.MinValue"/> 表示尚未定位。
+    /// </summary>
+    [ObservableProperty] private int _floatingWindowX = int.MinValue;
+    [ObservableProperty] private int _floatingWindowY = int.MinValue;
 }
 
 /// <summary>

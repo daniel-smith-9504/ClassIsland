@@ -290,22 +290,19 @@ public class SecRandomService
 
                 if (includeHistory)
                 {
-                    var keys = new HashSet<string>(StringComparer.Ordinal);
-                    foreach (var record in History)
-                    {
-                        keys.Add(HistoryKey(record));
-                    }
+                    var merged = History
+                        .Concat(profile.History)
+                        .GroupBy(HistoryKey)
+                        .Select(group => group.First())
+                        .OrderByDescending(record => record.Time)
+                        .ToList();
+                    importedHistory = merged.Count - History.Count;
+                    skippedHistory = profile.History.Count - importedHistory;
 
-                    foreach (var record in profile.History.OrderBy(record => record.Time))
+                    History.Clear();
+                    foreach (var record in merged)
                     {
-                        if (!keys.Add(HistoryKey(record)))
-                        {
-                            skippedHistory++;
-                            continue;
-                        }
-
-                        History.Insert(0, record);
-                        importedHistory++;
+                        History.Add(record);
                     }
                 }
             });

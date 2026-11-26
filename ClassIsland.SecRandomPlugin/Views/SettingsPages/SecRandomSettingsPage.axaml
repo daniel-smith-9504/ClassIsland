@@ -183,7 +183,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button Content="立即抽取" Click="Draw_OnClick"/>
                         <Button Content="显示悬浮窗" Click="OpenFloatingWindow_OnClick"
-                                ToolTip.Tip="悬浮窗会常驻显示在屏幕上，可拖动标题移动，位置会自动保存"/>
+                                ToolTip.Tip="悬浮窗会常驻显示在屏幕上，可拖动标题移动，位置会自动保存；也可在托盘 ClassIsland 图标 → 更多选项 → 随机点名 中打开"/>
                         <Button Content="清空历史" Click="ClearHistory_OnClick"/>
                     </StackPanel>
 

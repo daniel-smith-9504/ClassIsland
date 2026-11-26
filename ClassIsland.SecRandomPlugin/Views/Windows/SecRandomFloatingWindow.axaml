@@ -6,7 +6,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         mc:Ignorable="d"
         Width="360"
-        SizeToContent="Height"
+        Height="176"
         CanResize="False"
         CanMinimize="False"
         CanMaximize="False"
@@ -19,9 +19,8 @@
         WindowStartupLocation="Manual"
         Title="随机点名">
     <Border CornerRadius="12"
-            Opacity="0.94"
-            Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+            Background="#E61C1C1C"
+            BorderBrush="#33FFFFFF"
             BorderThickness="1"
             BoxShadow="0 8 24 0 #55000000"
             Padding="16,12">
@@ -33,9 +32,10 @@
                     PointerMoved="DragHandle_OnPointerMoved"
                     PointerReleased="DragHandle_OnPointerReleased">
                 <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Text="随机点名" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <TextBlock Text="随机点名" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"
+                               Foreground="#FFFFFFFF"/>
                     <TextBlock Grid.Column="1" Text="拖动移动" FontSize="11" VerticalAlignment="Center"
-                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                               Foreground="#B3FFFFFF"/>
                 </Grid>
             </Border>
 
@@ -44,12 +44,12 @@
                        Text="点击「抽取」开始"
                        FontSize="22"
                        FontWeight="Bold"
+                       Foreground="#FFFFFFFF"
                        TextWrapping="Wrap"
                        VerticalAlignment="Center"/>
 
             <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8">
-                <TextBlock Text="人数" VerticalAlignment="Center"
-                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                <TextBlock Text="人数" VerticalAlignment="Center" Foreground="#B3FFFFFF"/>
                 <NumericUpDown Grid.Column="1" Width="100" Minimum="1" Maximum="50"
                                Value="{Binding Service.Config.DrawCount, Mode=TwoWay}"/>
                 <Button Grid.Column="3" Content="抽取" Click="Draw_OnClick"/>

@@ -41,6 +41,8 @@ public partial class SecRandomFloatingWindow : Window
     private void ServiceOnDrawCompleted(object? sender, DrawCompletedEventArgs e) =>
         ResultText.Text = string.Join("、", e.Students.Select(student => student.Name));
 
+    public void SetResult(string text) => ResultText.Text = text;
+
     private void Draw_OnClick(object? sender, RoutedEventArgs e)
     {
         var outcome = _service.Draw();
